@@ -1,6 +1,7 @@
 
 import matplotlib.pylab as plt
 from lammps import lammps, reaction
+import numpy as np
 
 if __name__ == '__main__':
 
@@ -24,7 +25,7 @@ if __name__ == '__main__':
 			  'rxnSteps': 100,
 			  'prob': 0.5, # probability of reaction taking place ~ purely heuristic for now
 			  'freq': 100, # frequency of saving/printing output
-			  'thermalize': 1000 # number of steps to thermalize the system before commencing production run
+			  'thermalize': 100 # number of steps to thermalize the system before commencing production run
 			  }
 
 	# Create an instance of the Reaction class
@@ -51,9 +52,15 @@ if __name__ == '__main__':
 	# Write 'all' coordinates to 'traj.xyz' file every 'freq' steps
 	Rxn.dumpSetup(sel='all', freq=params['freq'], traj='traj.xyz')
 
+	coords = np.zeros((Rxn.lmp.get_natoms(),3))
+
 	# Run an ensemble of short MD runs
 	for _ in range(params['totalSteps'] / params['rxnSteps']):
 		Rxn.integrate(steps = params['rxnSteps'])
+
+	coords = Rxn.extractCoords(coords, group="all")
+
+	Rxn.scatterCoords(coords)
 
 	# Plot temperature vs time, then save the figure as a pdf
 	plt.rc('text', usetex=True)

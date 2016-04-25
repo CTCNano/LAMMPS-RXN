@@ -446,21 +446,21 @@ class reaction:
 
     self.lmp.command('dump dump {} xyz {} {}.{}'.format(sel, freq, traj, trajFormat))
 
-  def extractCoords(self, coords):
+  def extractCoords(self, coords, group):
     """
     Extracts atomic positions from a certian frame and adds it to coords
     """
     # Extract coordinates from lammps
     self.lmp.command('variable x atom x')
-    x = Rxn.lmp.extract_variable("x", "group1", 1)
+    x = self.lmp.extract_variable("x", group, 1)
 
     self.lmp.command('variable y atom y')
-    y = Rxn.lmp.extract_variable("y", "group1", 1)
+    y = self.lmp.extract_variable("y", group, 1)
 
     self.lmp.command('variable z atom z')
-    z = Rxn.lmp.extract_variable("z", "group1", 1)
+    z = self.lmp.extract_variable("z", group, 1)
 
-    for i in range(Rxn.lmp.get_natoms()):
+    for i in range(self.lmp.get_natoms()):
       coords[i,:] += x[i], y[i], z[i]
 
     self.lmp.command('variable x delete')
@@ -468,6 +468,21 @@ class reaction:
     self.lmp.command('variable z delete')
 
     return coords
+
+  def scatterCoords(self, coords):
+    """
+    This involves communication across all processors
+    """
+    coords = coords[coords[:,0] != 0,:]
+    coords = np.reshape(coords, coords.shape[0] * coords.shape[1])
+
+    # Collect atoms on master processor
+    x = self.lmp.gather_atoms("x", 1, 3)
+
+    for i, c in enumerate(coords):
+      x[i] = c
+
+    self.lmp.scatter_atoms("x", 1, 3, x)
 
   def computeRxn(self, prob, rc):
     """ 
