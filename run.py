@@ -1,7 +1,6 @@
 
 import matplotlib.pylab as plt
 from lammps import lammps, reaction
-import numpy as np
 
 if __name__ == '__main__':
 
@@ -13,13 +12,13 @@ if __name__ == '__main__':
 			  'dt': 1.0, 
 			  'temp': 300.0, 
 			  'relax': 10.0, 
-			  'cutoff': 1.0,
-			  'ensemble': 'nvt', 
+			  'cutoff': 2.5,
+			  'ensemble': 'nve', 
 			  'nSS': 2,  # number of components / subsystems
 			  'idSS': [1,2],
 			  'box': (0,40,0,80,0,40), # simulation box size
-			  'Natoms': [10000, 5000],
-			  'print': ('time', 'atoms', 'ke'), # print the time, atom number, and kinetic energy
+			  'Natoms': [1000, 500],
+			  'print': ('time', 'atoms', 'ke', 'fmax', 'pe'), # print the time, atom number, and kinetic energy
 			  'mass': [12.00, 1.01],
 			  'totalSteps': 1000,
 			  'rxnSteps': 100,
@@ -52,13 +51,9 @@ if __name__ == '__main__':
 	# Write 'all' coordinates to 'traj.xyz' file every 'freq' steps
 	Rxn.dumpSetup(sel='all', freq=params['freq'], traj='traj.xyz')
 
-	coords = np.zeros((Rxn.lmp.get_natoms(),3))
-
 	# Run an ensemble of short MD runs
 	for _ in range(params['totalSteps'] / params['rxnSteps']):
 		Rxn.integrate(steps = params['rxnSteps'])
-                #coords = Rxn.extractCoords(coords) # computes the average coords
-		#Rxn.computeRxn(params['prob'], params['cutoff'])
 
 	# Plot temperature vs time, then save the figure as a pdf
 	plt.rc('text', usetex=True)

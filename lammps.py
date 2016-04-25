@@ -274,6 +274,8 @@ class reaction:
 
     elif pargs['ensemble'] == 'npt':
       self.pargs['ensembleArgs'] = (pargs['temp'], pargs['temp'], pargs['relax'], pargs['press'], pargs['press'], pargs['prelax'])
+    elif pargs['ensemble'] == 'nve':
+      self.pargs['ensembleArgs'] = ()
 
     logging.info('Setting up problem dimensions and boundaries')
 
@@ -291,7 +293,7 @@ class reaction:
     @ pos: 6 x 1 tuple that defines the boundaries of the box 
     """
     logging.info('Creating domain')
-    self.lmp.command('lattice none 1.0')
+    self.lmp.command('lattice fcc 0.8442')
 
     self.lmp.command('region box block {} {} {} {} {} {}'.format(*self.pargs['box']))
     self.lmp.command('create_box {} box'.format(self.pargs['nSS']))
@@ -328,7 +330,7 @@ class reaction:
     """
     """
     logging.info('Setting up nearest neighbor searching parameters')
-    self.lmp.command('neighbor 1 multi')
+    self.lmp.command('neighbor {} bin'.format(self.pargs['cutoff']))
     self.lmp.command('neigh_modify delay 0')
 
   def createProperty(self, var, prop, type, valueProp, valueType):
@@ -354,8 +356,6 @@ class reaction:
     for rt in crossIndices:
       indices.append(rt)
 
-    print indices
-
     for ind in indices:
       # pair_coeff epsilon sigma cutoff (LJ) [cutoff (Coulomb)]
       self.lmp.command('pair_coeff {} {} 0.356359487256 0.46024 {}'.format(ind[0], ind[1], rc))
@@ -366,7 +366,7 @@ class reaction:
     logging.info('Initializing atomic velocities')
 
     seed = np.random.randint(1,10**6)
-    self.lmp.command('velocity all create {} {}'.format(self.pargs['temp'] * 0.3, seed))
+    self.lmp.command('velocity all create {} {}'.format(self.pargs['temp'], seed))
 
   def setupMass(self):
     """
@@ -397,19 +397,20 @@ class reaction:
 
     logging.info('Setting up integration scheme parameters')
 
-    if self.pargs['ensemble'] is 'nvt':
+    if self.pargs['ensemble'] == 'nvt':
       logging.info('Running NVT simulation ...')
       command = 'fix {} all {} temp {} {} {}'
 
-    elif self.pargs['ensemble'] is 'npt':
+    elif self.pargs['ensemble'] == 'npt':
       logging.info('Running NPT simulation ...')
       command = 'fix {} all {} temp/rescale {} {} {} iso {} {} {}'
+    elif self.pargs['ensemble'] == 'nve':
+      logging.info('Running NVE simulation ...')
+      command = 'fix {} all {}'
     else:
       raise ValueError
 
-    #self.lmp.command(command.format(name, self.pargs['ensemble'], *self.pargs['ensembleArgs']))
-
-    self.lmp.command('fix 3 all temp/rescale 100 300.0 300.1 0.02 0.5')
+    self.lmp.command(command.format(name, self.pargs['ensemble'], *self.pargs['ensembleArgs']))
 
     if dt is None:
       self.lmp.command('timestep {}'.format(self.pargs['dt']))
@@ -424,7 +425,6 @@ class reaction:
 
     for tup in self.monitorList:
       self.lmp.command('compute {} {} {}'.format(*tup))
-      print 'compute {} {} {}'.format(*tup)
       self.vars.append(self.lmp.extract_compute('thermo_temp', 0, 0))
       self.lmp.command('uncompute {}'.format(tup[0]))
 
